@@ -1,0 +1,23 @@
+FAMILIENBUDGET ALS APP – KURZANLEITUNG
+
+Inhalt: Das Programm (index.html) mit App-Symbolen. Es enthält KEINE persönlichen Daten.
+Deine Daten bleiben in deiner eigenen Daten-Datei. Lade diese nie mit hoch.
+
+A) Bei GitHub bereitstellen (kostenlos)
+1. Konto anlegen auf github.com (Sign up).
+2. Oben rechts "+" > "New repository". Name: familienbudget. "Public" wählen. "Create repository".
+3. Zip-Datei auf dem Computer entpacken. ANLEITUNG.txt kannst du weglassen.
+4. Im neuen Repository: "uploading an existing file" klicken, alle entpackten Dateien hineinziehen, unten "Commit changes".
+5. Settings > Pages > Source: "Deploy from a branch" > Branch "main", Ordner "/ (root)" > Save.
+6. Nach 1-2 Minuten steht oben die Adresse: https://DEIN-NAME.github.io/familienbudget/
+
+B) Als App installieren
+Windows (Chrome oder Edge): Adresse öffnen > in der Adressleiste rechts auf das Installieren-Symbol klicken (oder Menü > "Installieren"/"App installieren"). Danach Startmenü oder Taskleiste.
+Handy: Adresse im Browser öffnen > Menü > "Zum Startbildschirm hinzufügen".
+
+C) Daten
+Am Windows-Rechner: "Plan öffnen" > Daten-Datei wählen. Gespeichert wird danach automatisch.
+Am Handy: "Plan öffnen" > Datei wählen, am Ende "Als Datei sichern".
+
+D) Neue Version einspielen
+Im Repository auf index.html klicken > Stift-Symbol / "Upload files" > Datei ersetzen > Commit.

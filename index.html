@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#184f95">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Familienbudget</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky Kopfzeile mit Monat/Jahr-Umschalter, Kennzahlen, eine Leiste "Einnahmen = 100 %", daneben Fix/Variabel, darunter die bearbeitbaren Posten. */
+:root {
+  --bg: #f4f4f1;
+  --surface: #fcfcfb;
+  --field: #ffffff;
+  --ink: #0b0b0b;
+  --ink2: #52514e;
+  --muted: #6e6c66;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,.10);
+  --accent: #2a78d6;
+  --hero: #184f95;
+  --hero-ink: #ffffff;
+  --pos: #006300;
+  --neg: #c23030;
+  --rest: #e6efe0;
+  --rest-line: #9db88f;
+  --fix: #1c5cab;
+  --var: #86b6ef;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d; --surface: #1a1a19; --field: #232321; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a3a198;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --accent: #3987e5; --hero: #1c5cab; --hero-ink: #ffffff; --pos: #0ca30c; --neg: #e66767;
+    --rest: #1f2a1c; --rest-line: #4e6a44; --fix: #5598e7; --var: #1c5cab;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --surface: #1a1a19; --field: #232321; --ink: #ffffff; --ink2: #c3c2b7; --muted: #a3a198;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+  --accent: #3987e5; --hero: #1c5cab; --hero-ink: #ffffff; --pos: #0ca30c; --neg: #e66767;
+  --rest: #1f2a1c; --rest-line: #4e6a44; --fix: #5598e7; --var: #1c5cab;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-inline: 16px; padding-block: 0 56px;
+}
+.wrap { max-width: 1140px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3, p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* Kopf */
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: var(--bg); border-bottom: 1px solid var(--grid);
+  margin-inline: -16px; padding: 14px 16px;
+}
+.top-in { max-width: 1140px; margin-inline: auto; display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 5vw, 36px); letter-spacing: -.02em; line-height: 1.05; text-wrap: balance; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.seg button { border: 0; background: transparent; padding: 8px 18px; border-radius: 9px; font-weight: 600; cursor: pointer; color: var(--ink2); }
+.seg button[aria-pressed="true"] { background: var(--hero); color: var(--hero-ink); }
+.intro { color: var(--ink2); max-width: 70ch; padding-top: 6px; }
+.intro small { display: block; color: var(--muted); font-size: 13px; padding-top: 2px; }
+
+/* Kennzahlen */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile.hero { background: var(--hero); border-color: transparent; color: var(--hero-ink); }
+.lab { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.hero .lab { color: color-mix(in srgb, var(--hero-ink) 78%, transparent); }
+.big { font-family: var(--f-display); font-weight: 700; font-size: clamp(32px, 6vw, 42px); letter-spacing: -.02em; line-height: 1.1; }
+.sub { color: var(--ink2); font-size: 13.5px; }
+.hero .sub { color: color-mix(in srgb, var(--hero-ink) 85%, transparent); }
+
+/* Karten */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.card h2 { font-family: var(--f-display); font-weight: 700; font-size: 19px; letter-spacing: -.01em; }
+.card .lede { color: var(--ink2); font-size: 13.5px; margin-top: -10px; }
+
+.bar-wrap { position: relative; padding-top: 18px; }
+.bar { display: flex; gap: 2px; height: 38px; }
+.seg-m { min-width: 2px; flex-basis: 0; background: var(--c); border-radius: 4px; cursor: default; }
+.seg-m:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.seg-m:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+.seg-m.rest { background: var(--rest); border: 1px dashed var(--rest-line); }
+.seg-m:hover, .seg-m:focus-visible { filter: brightness(1.12); }
+.tick { position: absolute; top: 0; bottom: -4px; width: 0; border-left: 2px solid var(--ink); }
+.tick span { position: absolute; top: -2px; transform: translateX(-100%); padding-right: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; color: var(--ink); }
+
+.legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 2px 24px; }
+.legend li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--grid); }
+.mk { width: 12px; height: 12px; border-radius: 3px; background: var(--c); align-self: center; }
+.mk.rest { background: var(--rest); border: 1px dashed var(--rest-line); }
+.legend .nm { min-width: 0; overflow-wrap: anywhere; }
+.legend .vl { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.legend .vl em { font-style: normal; font-weight: 400; color: var(--muted); padding-left: 8px; }
+
+.fv { display: flex; flex-direction: column; gap: 10px; }
+.fv .bar { height: 22px; }
+.fv-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.fv-row b { font-variant-numeric: tabular-nums; }
+.fv-row em { font-style: normal; color: var(--muted); padding-left: 6px; }
+.top5 { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.top5 li { display: grid; gap: 4px; }
+.top5 .l1 { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.top5 .l1 span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.top5 .l1 b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.top5 .tr { height: 6px; background: var(--grid); border-radius: 3px; }
+.top5 .tr i { display: block; height: 100%; background: var(--c); border-radius: 3px; }
+h3 { font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+
+/* Bearbeitung */
+.editors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.65fr); gap: 12px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 8px 20px 16px; min-width: 0; }
+.panel-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; padding-block: 14px 6px; }
+.panel-h h2 { font-family: var(--f-display); font-weight: 700; font-size: 19px; }
+.panel-h b { font-variant-numeric: tabular-nums; }
+.link { border: 0; background: none; padding: 4px 0; color: var(--accent); font-weight: 600; cursor: pointer; }
+.link:hover { text-decoration: underline; }
+
+details { border-top: 1px solid var(--grid); }
+details > summary { list-style: none; display: grid; grid-template-columns: 12px minmax(0, 1fr) auto 14px; gap: 12px; align-items: center; padding: 13px 0; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; justify-self: center; }
+details[open] > summary::after { transform: rotate(-135deg); }
+.gname { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.gmeta { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.gmeta b { font-weight: 600; }
+.gmeta i { font-style: normal; color: var(--muted); padding-left: 8px; font-size: 13px; }
+
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 10px 0; border-top: 1px solid var(--grid); }
+.row:first-of-type { border-top: 0; }
+.row .name { grid-column: 1; min-width: 0; width: 100%; border: 1px solid transparent; background: transparent; padding: 4px 8px; margin-left: -8px; border-radius: 8px; font-weight: 500; }
+.row .name:hover { border-color: var(--border); }
+.row .calc { grid-column: 2; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; padding-top: 5px; white-space: nowrap; }
+.row .ctl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.amt { display: inline-flex; align-items: center; background: var(--field); border: 1px solid var(--border); border-radius: 8px; padding-right: 10px; }
+.amt input { width: 92px; border: 0; background: transparent; padding: 6px 4px 6px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+.amt input:focus-visible { outline: none; }
+.amt:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.amt span { color: var(--muted); }
+select { background: var(--field); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+.chip { border: 1px solid var(--border); background: transparent; color: var(--ink2); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--hero); border-color: transparent; color: var(--hero-ink); }
+.del { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; padding: 2px 8px; border-radius: 8px; cursor: pointer; }
+.del:hover { color: var(--neg); }
+.add { border: 1px dashed var(--axis); background: transparent; color: var(--ink2); width: 100%; padding: 9px; border-radius: 10px; margin: 4px 0 12px; cursor: pointer; font-weight: 500; }
+.add:hover { border-color: var(--accent); color: var(--accent); }
+.inc-body { padding-top: 4px; }
+
+.foot { color: var(--muted); font-size: 13px; max-width: 80ch; }
+
+/* Daten-Datei */
+.databar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px; }
+.databar .st { display: flex; align-items: center; gap: 10px; flex: 1 1 300px; min-width: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--pos); }
+.dot.warn { background: #fab219; }
+.dot.err { background: var(--neg); }
+#dText { min-width: 0; overflow-wrap: anywhere; color: var(--ink2); font-size: 14px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 1px solid var(--border); background: var(--field); color: var(--ink); padding: 8px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--hero); color: var(--hero-ink); border-color: transparent; }
+.locked .editors { opacity: .45; pointer-events: none; }
+
+/* Kategorie-Kopf (Name, Farbe, Sortierung) */
+.cathead { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 4px 0 14px; }
+.cf { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cf.grow { flex: 1 1 180px; }
+.cf > span { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.cf input[type="text"], .cf input:not([type]) { width: 100%; background: var(--field); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.cf select { min-width: 0; }
+input[type="color"] { width: 44px; height: 34px; padding: 2px; background: var(--field); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.delcat { border: 1px solid var(--border); background: transparent; color: var(--ink2); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-weight: 500; }
+.delcat:hover:not(:disabled) { color: var(--neg); border-color: var(--neg); }
+.delcat.armed { color: var(--neg); border-color: var(--neg); font-weight: 600; }
+.delcat:disabled { opacity: .4; cursor: not-allowed; }
+.allsort { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 6px 0 12px; color: var(--ink2); font-size: 14px; }
+.addcat { margin-top: 12px; margin-bottom: 4px; }
+
+/* Pläne */
+.booting main, .booting .top h1 { visibility: hidden; }
+.locked #overview { opacity: .25; filter: blur(3px); pointer-events: none; }
+.top h1 { flex: 1 1 260px; min-width: 0; }
+.h1input { font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 2px 8px; margin-left: -9px; width: 100%; min-width: 0; text-overflow: ellipsis; }
+.h1input:hover { border-color: var(--border); }
+.h1input:focus-visible { background: var(--surface); }
+select.btn { min-width: 0; max-width: 100%; }
+.databar { position: relative; }
+.btn.danger { background: #b3261e; border-color: transparent; color: #fff; }
+.more > summary { list-style: none; cursor: pointer; display: inline-block; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 2px 2px 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.menu { position: absolute; right: 12px; top: calc(100% + 6px); z-index: 30; width: min(340px, calc(100% - 24px)); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px; box-shadow: 0 12px 32px rgba(0,0,0,.2); display: flex; flex-direction: column; }
+.mi { text-align: left; border: 0; background: transparent; border-radius: 9px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font-weight: 600; color: var(--ink); }
+.mi small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.mi:hover:not(:disabled) { background: var(--bg); }
+.mi:disabled { opacity: .45; cursor: not-allowed; }
+.mi.danger { color: var(--neg); }
+.menu hr { border: 0; border-top: 1px solid var(--grid); margin: 4px 0; width: 100%; }
+dialog { border: 1px solid var(--border); border-radius: 18px; background: var(--surface); color: var(--ink); padding: 24px; width: min(460px, calc(100vw - 32px)); font: inherit; }
+dialog::backdrop { background: rgba(0,0,0,.5); }
+dialog h2 { font-family: var(--f-display); font-size: 22px; margin-bottom: 10px; }
+dialog p { color: var(--ink2); }
+.dlg-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 70; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 12px 16px; display: flex; gap: 16px; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,.3); max-width: calc(100vw - 32px); }
+#toast .link { color: inherit; text-decoration: underline; }
+
+/* Personen */
+#overview { width: 100%; min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.prow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--grid); }
+.prow input.pname { min-width: 0; width: 100%; border: 1px solid transparent; background: transparent; padding: 6px 8px; border-radius: 8px; font-weight: 600; }
+.prow input.pname:hover { border-color: var(--border); }
+.prow .pmeta { grid-column: 2 / -1; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; padding-left: 8px; }
+.delp { border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; padding: 2px 8px; border-radius: 8px; cursor: pointer; }
+.delp:hover { color: var(--neg); }
+.delp.armed { font-size: 12.5px; font-weight: 600; color: var(--neg); text-align: right; max-width: 150px; }
+.phint { color: var(--muted); font-size: 13px; padding: 6px 0 4px; }
+select.ps { max-width: 100%; }
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.who .lab { margin-right: 4px; }
+.cd { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 7px; }
+.pbars { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.tablewrap { overflow-x: auto; }
+table.ptab { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 14px; }
+.ptab th { text-align: right; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+.ptab td { padding: 9px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+.ptab th:first-child, .ptab td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.ptab td:first-child { font-weight: 600; }
+.ptab tr.total td { font-weight: 700; border-top: 2px solid var(--axis); border-bottom: 0; }
+.ptab .pos { color: var(--pos); }
+.ptab .neg { color: var(--neg); }
+.ptab .zero { color: var(--muted); }
+.ptab td.heat { background: color-mix(in srgb, var(--accent) var(--h), transparent); }
+
+#tip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 8px; padding: 8px 11px; font-size: 12.5px; display: grid; gap: 1px; max-width: 240px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+#tip b { font-weight: 600; }
+#tip em { font-style: normal; opacity: .75; }
+
+@media (max-width: 860px) {
+  .grid2, .editors { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .card, .panel { padding-inline: 16px; }
+  .legend { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { details > summary::after { transition: none; } }
+/* Handy und Tablet */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.badge { border: 0; background: #fab219; color: #1b1f24; border-radius: 999px; padding: 7px 14px; font-weight: 600; cursor: pointer; }
+@media (pointer: coarse), (max-width: 700px) {
+  input, select, textarea { font-size: 16px; }
+  .btn { padding: 11px 16px; }
+  .seg button { padding: 10px 18px; }
+  .chip { padding: 9px 14px; }
+  .del, .delp { padding: 9px 12px; }
+  .add { padding: 13px; }
+  .mi { padding: 13px 14px; }
+  .amt input { padding-block: 9px; }
+  select { padding: 9px 10px; }
+  input[type="color"] { width: 52px; height: 42px; }
+  .link { padding: 8px 0; }
+}
+.openwrap { position: relative; display: inline-flex; }
+.openwrap input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; }
+.topr { display: inline-flex; align-items: center; gap: 10px; }
+.themerange { width: 96px; height: 28px; margin: 0; accent-color: var(--hero); cursor: pointer; background: transparent; }
+.themebtn { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
+.themebtn:hover { background: var(--field); }
+.themebtn .i-sun { display: none; }
+:root[data-theme="dark"] .themebtn .i-sun { display: block; }
+:root[data-theme="dark"] .themebtn .i-moon { display: none; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <h1><input class="h1input" id="planName" value="Familienbudget" maxlength="60" autocomplete="off" aria-label="Name des Plans"></h1>
+    <button type="button" class="badge" id="dirtyBadge" hidden>Ungesichert · Jetzt sichern</button>
+    <div class="topr">
+      <div class="seg" role="group" aria-label="Zeitraum">
+        <button type="button" id="v-m" aria-pressed="true">Pro Monat</button>
+        <button type="button" id="v-y" aria-pressed="false">Pro Jahr</button>
+      </div>
+      <input type="range" class="themerange" id="themeRange" min="0" max="100" step="1" value="0" aria-label="Design von hell bis dunkel stufenlos einstellen" title="Hell bis dunkel">
+      <button type="button" class="themebtn" id="themeBtn" aria-label="Zwischen hellem und dunklem Design wechseln" title="Hell / Dunkel">
+        <svg class="i-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+        <svg class="i-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="intro">
+    Zwei Erwachsene, zwei Kinder, ein Haushalt. Die Beträge sind Beispielwerte, überschreibe sie mit deinen eigenen. Posten, die nicht jeden Monat anfallen, rechnet die Seite automatisch um.
+  </p>
+
+  <section class="databar" aria-label="Plan und Daten-Datei">
+    <div class="st"><span class="dot" id="dDot"></span><span id="dText" role="status"></span></div>
+    <div class="btns">
+      <span class="openwrap"><button type="button" class="btn primary" id="dOpen">Plan öffnen</button><input type="file" id="dFile" aria-label="Daten-Datei auswählen" hidden></span>
+      <button type="button" class="btn" id="dPaste" hidden>Per Text öffnen/sichern</button>
+      <select class="btn" id="dRecent" aria-label="Zuletzt verwendete Pläne" hidden></select>
+      <button type="button" class="btn" id="dGrant" hidden>Zugriff erlauben</button>
+      <button type="button" class="btn primary" id="dMine" hidden>Meine Version speichern</button>
+      <button type="button" class="btn" id="dTheirs" hidden>Datei neu laden</button>
+      <button type="button" class="btn" id="dSave" hidden>Jetzt speichern</button>
+      <button type="button" class="btn" id="dDl" hidden>Als Datei sichern</button>
+      <details class="more" id="more">
+        <summary class="btn">Mehr</summary>
+        <div class="menu">
+          <button type="button" class="mi" id="mNewEmpty">Neuer leerer Plan …<small>Gleiche Kategorien und Posten, alle Beträge 0 €, in einer neuen Datei. Dieser Plan bleibt unverändert.</small></button>
+          <button type="button" class="mi" id="mSaveAs">Als neuen Plan speichern …<small>Kopie dieses Plans in einer neuen Datei. Dieser Plan bleibt unverändert.</small></button>
+          <button type="button" class="mi" id="mWin">In neuem Fenster öffnen<small>Einen zweiten Plan parallel bearbeiten.</small></button>
+          <button type="button" class="mi" id="dDlMenu">Kopie herunterladen<small>Sicherung als Datei auf diesen Computer.</small></button>
+          <hr>
+          <button type="button" class="mi danger" id="mReset">Alles auf Null setzen …<small>Alle Beträge in diesem Plan werden 0 €. Vorher wird nachgefragt.</small></button>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div id="overview" class="wrap" style="gap:12px"></div>
+
+  <section class="editors" aria-label="Posten bearbeiten">
+    <div class="stack">
+      <div class="panel" id="pplPanel"></div>
+      <div class="panel" id="incPanel"></div>
+    </div>
+    <div class="panel" id="expPanel"></div>
+  </section>
+
+  <p class="foot">Jahreswert = Betrag × Zahlungen pro Jahr. Monatswert = Jahreswert ÷ 12. „Fix“ sind Kosten, die unabhängig vom Verhalten anfallen (Miete, Versicherungen, Kita). „Variabel“ sind Kosten, die du steuern kannst (Lebensmittel, Freizeit, Urlaub).</p>
+</main>
+
+<dialog id="dlgReset" aria-labelledby="dlgResetT">
+  <h2 id="dlgResetT">Alles auf Null setzen?</h2>
+  <p id="dlgResetP"></p>
+  <div class="dlg-btns">
+    <button type="button" class="btn" id="resetNo" autofocus>Abbrechen</button>
+    <button type="button" class="btn danger" id="resetYes">Ja, alles auf Null setzen</button>
+  </div>
+</dialog>
+
+<dialog id="dlgPaste" aria-labelledby="dlgPasteT">
+  <h2 id="dlgPasteT">Daten per Text</h2>
+  <p>Öffnen: Inhalt deiner Daten-Datei hier einfügen und auf „Laden“ tippen. Sichern: auf „Aktuelle Daten zeigen“ tippen, den Text kopieren und in deiner Datei im Cloud-Ordner ersetzen.</p>
+  <textarea id="pasteTa" rows="8" spellcheck="false" style="width:100%;margin:12px 0;font-family:monospace;font-size:16px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surface);color:var(--ink)"></textarea>
+  <p id="pasteMsg" role="status"></p>
+  <div class="dlg-btns">
+    <button type="button" class="btn" id="pasteClose">Schließen</button>
+    <button type="button" class="btn" id="pasteShow">Aktuelle Daten zeigen</button>
+    <button type="button" class="btn primary" id="pasteLoad">Laden</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" class="link" id="toastUndo">Rückgängig</button></div>
+
+<div id="tip" hidden></div>
+
+<script>
+(function () {
+  document.body.classList.add('booting');
+  var KEY = 'familienbudget-v1';
+  var PER = { m: 12, q: 4, h: 2, y: 1 };
+  var INTV = [['m', 'monatlich'], ['q', 'vierteljährlich'], ['h', 'halbjährlich'], ['y', 'jährlich']];
+  /* Kategorien: c = Nummer 1-8 (Standardfarbe, passt sich dem Hell/Dunkel-Modus an) oder eigener Hex-Wert */
+  var DEFAULT_CATS = [
+    { id: 'wohnen', name: 'Wohnen', c: 1 },
+    { id: 'mobil', name: 'Mobilität', c: 2 },
+    { id: 'versich', name: 'Versicherungen', c: 3 },
+    { id: 'kinder', name: 'Kinder', c: 4 },
+    { id: 'essen', name: 'Lebensmittel & Haushalt', c: 5 },
+    { id: 'freizeit', name: 'Freizeit & Urlaub', c: 6 },
+    { id: 'sparen', name: 'Sparen & Vorsorge', c: 7 },
+    { id: 'gesund', name: 'Gesundheit', c: 8 }
+  ];
+  var DEFAULT_NAME = 'Familienbudget';
+  var PERSON_COLORS = ['#3b6fb6', '#d9822b', '#2f9e8f', '#b5547a', '#7a62c9', '#8a8d3f', '#c0564b', '#4f8a5b'];
+  function defPeople() {
+    return [{ id: 'pe1', name: 'Person 1', c: PERSON_COLORS[0] }, { id: 'pe2', name: 'Person 2', c: PERSON_COLORS[1] },
+            { id: 'pe3', name: 'Kind 1', c: PERSON_COLORS[2] }, { id: 'pe4', name: 'Kind 2', c: PERSON_COLORS[3] }];
+  }
+  var EXTRA_COLORS = ['#0e9aa7', '#b5651d', '#7a8b2e', '#c2185b', '#5c6bc0', '#8d6e63', '#00897b', '#d4a017', '#6d4c9f', '#455a64'];
+  var SORTS = [['manual', 'Eingabe-Reihenfolge'], ['az', 'A bis Z'], ['za', 'Z bis A'], ['desc', 'Kosten absteigend'], ['asc', 'Kosten aufsteigend']];
+  function defCats() { return DEFAULT_CATS.map(function (c) { return { id: c.id, name: c.name, c: c.c, sort: 'manual' }; }); }
+  function colorOf(c) { return typeof c === 'number' ? 'var(--s' + c + ')' : c; }
+
+  function seed() {
+    var n = 0;
+    function it(g, name, amount, i, fix) { return { id: 'p' + (++n), g: g, name: name, amount: amount, i: i, fix: fix }; }
+    function inc(name, amount, i) { return { id: 'e' + (++n), name: name, amount: amount, i: i }; }
+    var st = {
+      view: 'm', n: n, allOpen: false, open: {}, cats: defCats(), name: DEFAULT_NAME, people: defPeople(), who: null,
+      income: [
+        inc('Nettogehalt Person 1', 3250, 'm'),
+        inc('Nettogehalt Person 2 (Teilzeit)', 1850, 'm'),
+        inc('Kindergeld für 2 Kinder', 518, 'm'),
+        inc('Steuererstattung', 600, 'y')
+      ],
+      items: [
+        it('wohnen', 'Kaltmiete', 1250, 'm', true),
+        it('wohnen', 'Nebenkosten', 260, 'm', true),
+        it('wohnen', 'Strom', 95, 'm', true),
+        it('wohnen', 'Internet & Mobilfunk', 60, 'm', true),
+        it('wohnen', 'Rundfunkbeitrag', 18.36, 'm', true),
+        it('mobil', 'Kfz-Steuer', 180, 'y', true),
+        it('mobil', 'Kfz-Versicherung', 720, 'y', true),
+        it('mobil', 'Deutschlandticket', 63, 'm', true),
+        it('mobil', 'Benzin', 260, 'm', false),
+        it('mobil', 'Wartung & Reparaturen', 600, 'y', false),
+        it('versich', 'Privathaftpflicht', 85, 'y', true),
+        it('versich', 'Hausrat', 70, 'y', true),
+        it('versich', 'Rechtsschutz', 25, 'm', true),
+        it('versich', 'Risikolebensversicherung', 35, 'm', true),
+        it('versich', 'Berufsunfähigkeit', 70, 'm', true),
+        it('kinder', 'Kita / Hort', 220, 'm', true),
+        it('kinder', 'Schulessen', 60, 'm', true),
+        it('kinder', 'Vereine & Kurse', 70, 'm', true),
+        it('kinder', 'Kleidung', 90, 'm', false),
+        it('kinder', 'Taschengeld', 30, 'm', false),
+        it('kinder', 'Schulbedarf', 150, 'y', false),
+        it('kinder', 'Klassenfahrten', 200, 'y', false),
+        it('essen', 'Lebensmittel', 850, 'm', false),
+        it('essen', 'Drogerie', 90, 'm', false),
+        it('essen', 'Haushaltsbedarf', 40, 'm', false),
+        it('freizeit', 'Urlaub', 3000, 'y', false),
+        it('freizeit', 'Restaurant & Ausgehen', 90, 'm', false),
+        it('freizeit', 'Streaming & Abos', 25, 'm', true),
+        it('freizeit', 'Geschenke & Feiern', 600, 'y', false),
+        it('sparen', 'Notgroschen (Tagesgeld)', 200, 'm', true),
+        it('sparen', 'ETF-Sparplan für die Kinder', 100, 'm', true),
+        it('gesund', 'Apotheke & Zuzahlungen', 40, 'm', false),
+        it('gesund', 'Zahnarzt & Brille', 300, 'y', false)
+      ]
+    };
+    /* Beispiel-Zuordnung, nur für die Beispielwerte */
+    var WHO = { 'Nettogehalt Person 1': 'pe1', 'Steuererstattung': 'pe1', 'Nettogehalt Person 2 (Teilzeit)': 'pe2',
+      'Benzin': 'pe1', 'Berufsunfähigkeit': 'pe1', 'Deutschlandticket': 'pe2', 'Risikolebensversicherung': 'pe2',
+      'Kita / Hort': 'pe4', 'Kleidung': 'pe4', 'Schulessen': 'pe3', 'Vereine & Kurse': 'pe3', 'Taschengeld': 'pe3',
+      'Schulbedarf': 'pe3', 'Klassenfahrten': 'pe3' };
+    st.income.concat(st.items).forEach(function (x) { x.p = WHO[x.name] || ''; });
+    return st;
+  }
+
+  var state = seed();
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { var s = JSON.parse(raw); if (s && s.items && s.income) state = s; }
+  } catch (e) { /* kein Speicher verfügbar */ }
+  if (!Array.isArray(state.cats) || !state.cats.length) state.cats = defCats();
+  if (typeof state.name !== 'string' || !state.name) state.name = DEFAULT_NAME;
+  if (!Array.isArray(state.people)) state.people = [];
+  fixPeople();
+  function fixPeople() {
+    var ids = {};
+    state.people.forEach(function (p) { ids[p.id] = 1; });
+    state.income.concat(state.items).forEach(function (x) { if (x.p && !ids[x.p]) x.p = ''; });
+    if (state.who && !ids[state.who]) state.who = null;
+  }
+  function personById(id) { return state.people.filter(function (p) { return p.id === id; })[0]; }
+  var META = 'familienbudget-v1-meta', cacheOk = null, cacheAt = 0, booted = false;
+  /* Zwischenspeicher im Browser (nur ohne automatische Datei): Stand, Dateiname und ob noch ungesichert */
+  function save() {
+    if (handle) return;
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      if (booted) localStorage.setItem(META, JSON.stringify({ at: Date.now(), fileName: fileName || '', dirty: !!dirty }));
+      cacheOk = true;
+    } catch (e) { cacheOk = false; }
+  }
+
+  var eur0 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  var eur2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var num2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var pct = new Intl.NumberFormat('de-DE', { style: 'percent', maximumFractionDigits: 0 });
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  function parseNum(s) {
+    s = String(s).trim().replace(/[\s€]/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+    else if (!/^\d+\.\d{1,2}$/.test(s)) s = s.replace(/\./g, '');
+    var n = parseFloat(s);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+  var yr = function (x) { return x.amount * PER[x.i]; };
+  var V = function (y) { return state.view === 'm' ? y / 12 : y; };
+  var other = function (y) { return state.view === 'm' ? y : y / 12; };
+  var share = function (a, b) { return b > 0 ? a / b : 0; };
+  var pc = function (a, b) { return b > 0 ? pct.format(a / b) : '–'; };
+
+  function calc(who) {
+    var all = who === undefined || who === null;
+    var okp = function (x) { return all || (x.p || '') === who; };
+    var incList = state.income.filter(okp), itemList = state.items.filter(okp);
+    var inc = incList.reduce(function (a, x) { return a + yr(x); }, 0);
+    var byG = state.cats.map(function (g) {
+      var items = itemList.filter(function (x) { return x.g === g.id; });
+      return { id: g.id, name: g.name, col: colorOf(g.c), items: items, y: items.reduce(function (a, x) { return a + yr(x); }, 0) };
+    });
+    var exp = byG.reduce(function (a, g) { return a + g.y; }, 0);
+    var fix = itemList.filter(function (x) { return x.fix; }).reduce(function (a, x) { return a + yr(x); }, 0);
+    return { inc: inc, exp: exp, fix: fix, vari: exp - fix, byG: byG, rest: inc - exp, items: itemList };
+  }
+
+  /* Auswertung je Person: Zeilen für jede Person plus „Gemeinsam“ (ohne Zuordnung) */
+  function calcPeople() {
+    var rows = state.people.map(function (p) { return { id: p.id, name: p.name, col: p.c, inc: 0, exp: 0, cat: {} }; });
+    rows.push({ id: '', name: 'Gemeinsam', col: 'var(--muted)', inc: 0, exp: 0, cat: {} });
+    var by = {}; rows.forEach(function (r) { by[r.id] = r; });
+    state.income.forEach(function (x) { var r = by[x.p || ''] || by['']; r.inc += yr(x); });
+    state.items.forEach(function (x) { var r = by[x.p || ''] || by['']; r.exp += yr(x); r.cat[x.g] = (r.cat[x.g] || 0) + yr(x); });
+    return rows;
+  }
+
+  function tipAttr(title, val, sub) { return ' data-tip="' + esc(JSON.stringify([title, val, sub])) + '"'; }
+
+  function renderOverview(d) {
+    var per = state.view === 'm' ? 'pro Monat' : 'pro Jahr';
+    var perOther = state.view === 'm' ? 'pro Jahr' : 'pro Monat';
+    var deficit = d.rest < 0;
+    var base = Math.max(d.inc, d.exp) || 1;
+    var restV = V(d.rest);
+
+    var kpis =
+      '<section class="kpis" aria-label="Kennzahlen">' +
+      '<article class="tile"><span class="lab">Einnahmen ' + per + '</span><p class="big">' + eur0.format(V(d.inc)) + '</p><p class="sub">' + eur0.format(other(d.inc)) + ' ' + perOther + '</p></article>' +
+      '<article class="tile"><span class="lab">Ausgaben ' + per + '</span><p class="big">' + eur0.format(V(d.exp)) + '</p><p class="sub">' + eur0.format(other(d.exp)) + ' ' + perOther + '</p></article>' +
+      '<article class="tile hero"><span class="lab">' + (deficit ? 'Fehlbetrag ' : 'Übrig ') + per + '</span><p class="big">' + eur0.format(Math.abs(restV)) + '</p><p class="sub">' +
+      (d.inc > 0 ? (deficit ? 'Ausgaben liegen ' + pct.format(Math.abs(d.rest) / d.inc) + ' über den Einnahmen' : pct.format(d.rest / d.inc) + ' der Einnahmen bleiben übrig') : (state.who == null ? 'Trage Einnahmen ein' : 'Keine Einnahmen zugeordnet')) +
+      '</p></article></section>';
+
+    var segs = d.byG.filter(function (g) { return g.y > 0; }).map(function (g) {
+      return '<div class="seg-m" tabindex="0" style="flex-grow:' + g.y + ';--c:' + g.col + '"' + tipAttr(g.name, eur0.format(V(g.y)) + ' ' + per, pc(g.y, d.inc) + ' der Einnahmen') + '></div>';
+    }).join('');
+    if (!deficit && d.rest > 0) segs += '<div class="seg-m rest" tabindex="0" style="flex-grow:' + d.rest + '"' + tipAttr('Übrig', eur0.format(restV) + ' ' + per, pc(d.rest, d.inc) + ' der Einnahmen') + '></div>';
+    var tick = deficit && d.inc > 0 ? '<div class="tick" style="left:' + (d.inc / base * 100) + '%"><span>Einnahmen</span></div>' : '';
+
+    var legend = d.byG.map(function (g) {
+      return '<li><span class="mk" style="--c:' + g.col + '"></span><span class="nm">' + esc(g.name) + '</span><span class="vl">' + eur0.format(V(g.y)) + '<em>' + pc(g.y, d.inc) + '</em></span></li>';
+    }).join('');
+    legend += '<li><span class="mk rest"></span><span class="nm">' + (deficit ? 'Fehlbetrag' : 'Übrig') + '</span><span class="vl">' + eur0.format(restV) + '<em>' + (d.inc > 0 ? pct.format(d.rest / d.inc) : '–') + '</em></span></li>';
+
+    var main =
+      '<article class="card"><h2>Wohin das Geld geht</h2>' +
+      '<p class="lede">Die ganze Leiste sind deine Einnahmen. Jedes Stück ist eine Ausgabenkategorie, der grüne Rest bleibt übrig.</p>' +
+      '<div class="bar-wrap"><div class="bar" role="img" aria-label="Verteilung der Einnahmen auf Ausgabenkategorien">' + segs + '</div>' + tick + '</div>' +
+      '<ul class="legend">' + legend + '</ul></article>';
+
+    var fixShare = share(d.fix, d.exp);
+    var fv =
+      '<div class="fv"><h3>Fix oder variabel</h3>' +
+      '<div class="bar" role="img" aria-label="Anteil Fixkosten und variable Kosten">' +
+      '<div class="seg-m" tabindex="0" style="flex-grow:' + Math.max(d.fix, 0.0001) + ';--c:var(--fix)"' + tipAttr('Fixkosten', eur0.format(V(d.fix)) + ' ' + per, pct.format(fixShare) + ' der Ausgaben') + '></div>' +
+      '<div class="seg-m" tabindex="0" style="flex-grow:' + Math.max(d.vari, 0.0001) + ';--c:var(--var)"' + tipAttr('Variable Kosten', eur0.format(V(d.vari)) + ' ' + per, pct.format(1 - fixShare) + ' der Ausgaben') + '></div>' +
+      '</div>' +
+      '<div class="fv-row"><span><span class="mk" style="--c:var(--fix);display:inline-block;vertical-align:-1px"></span> Fixkosten</span><span><b>' + eur0.format(V(d.fix)) + '</b><em>' + pct.format(fixShare) + '</em></span></div>' +
+      '<div class="fv-row"><span><span class="mk" style="--c:var(--var);display:inline-block;vertical-align:-1px"></span> Variabel</span><span><b>' + eur0.format(V(d.vari)) + '</b><em>' + pct.format(d.exp > 0 ? 1 - fixShare : 0) + '</em></span></div>' +
+      '<p class="sub">Fixkosten binden ' + pc(d.fix, d.inc) + ' der Einnahmen.</p></div>';
+
+    var top = d.items.map(function (x) { var g = state.cats.filter(function (k) { return k.id === x.g; })[0]; return { name: x.name, y: yr(x), col: colorOf(g ? g.c : 1) }; })
+      .sort(function (a, b) { return b.y - a.y; }).slice(0, 5);
+    var mx = top.length ? top[0].y || 1 : 1;
+    var topHtml = '<div class="fv"><h3>Größte Posten</h3><ul class="top5">' + top.map(function (t) {
+      return '<li' + tipAttr(t.name, eur0.format(V(t.y)) + ' ' + per, pc(t.y, d.inc) + ' der Einnahmen') + '><div class="l1"><span>' + esc(t.name) + '</span><b>' + eur0.format(V(t.y)) + '</b></div><div class="tr"><i style="width:' + (t.y / mx * 100) + '%;--c:' + t.col + '"></i></div></li>';
+    }).join('') + '</ul></div>';
+
+    var side = '<aside class="card">' + fv + topHtml + '</aside>';
+    document.getElementById('overview').innerHTML = whoHtml() + kpis + '<section class="grid2">' + main + side + '</section>' + peopleHtml();
+  }
+
+  function whoHtml() {
+    if (!state.people.length) return '';
+    var cur = state.who == null ? 'all' : (state.who === '' ? '_c' : state.who);
+    var chip = function (tok, label, col) {
+      return '<button type="button" class="chip" data-who="' + tok + '" aria-pressed="' + (cur === tok ? 'true' : 'false') + '">' +
+        (col ? '<i class="cd" style="--c:' + col + '"></i>' : '') + esc(label) + '</button>';
+    };
+    return '<div class="who" role="group" aria-label="Auswertung für"><span class="lab">Auswertung für</span>' + chip('all', 'Alle', '') +
+      state.people.map(function (p) { return chip(p.id, p.name, p.c); }).join('') + chip('_c', 'Gemeinsam', 'var(--muted)') + '</div>';
+  }
+
+  function peopleHtml() {
+    if (!state.people.length) return '';
+    var per = state.view === 'm' ? 'pro Monat' : 'pro Jahr';
+    var rows = calcPeople().filter(function (r) { return r.id !== '' || r.inc > 0 || r.exp > 0; });
+    var totInc = rows.reduce(function (a, r) { return a + r.inc; }, 0);
+    var totExp = rows.reduce(function (a, r) { return a + r.exp; }, 0);
+    var bar = function (key, total, word) {
+      var segs = rows.filter(function (r) { return r[key] > 0; }).map(function (r) {
+        return '<div class="seg-m" tabindex="0" style="flex-grow:' + r[key] + ';--c:' + r.col + '"' + tipAttr(r.name, eur0.format(V(r[key])) + ' ' + per, pc(r[key], total) + ' der ' + word) + '></div>';
+      }).join('');
+      return segs || '<div class="seg-m rest" style="flex-grow:1"></div>';
+    };
+    var money = function (y) { return y === 0 ? '<span class="zero">–</span>' : eur0.format(V(y)); };
+    var nm = function (r) { return '<span class="nm"><i class="cd" style="--c:' + r.col + '"></i>' + esc(r.name) + '</span>'; };
+    var saldo = function (v) { return '<td class="' + (v < -0.005 ? 'neg' : (v > 0.005 ? 'pos' : 'zero')) + '">' + (Math.abs(v) < 0.005 ? '–' : eur0.format(V(v))) + '</td>'; };
+
+    var t1 = '<table class="ptab"><thead><tr><th scope="col">Person</th><th scope="col">Einnahmen</th><th scope="col">Ausgaben</th><th scope="col">Anteil Ausgaben</th><th scope="col">Saldo</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td>' + nm(r) + '</td><td>' + money(r.inc) + '</td><td>' + money(r.exp) + '</td><td>' + (r.exp > 0 ? pc(r.exp, totExp) : '<span class="zero">–</span>') + '</td>' + saldo(r.inc - r.exp) + '</tr>';
+      }).join('') +
+      '<tr class="total"><td>Gesamt</td><td>' + money(totInc) + '</td><td>' + money(totExp) + '</td><td>' + (totExp > 0 ? '100 %' : '–') + '</td>' + saldo(totInc - totExp) + '</tr></tbody></table>';
+
+    var max = 0;
+    rows.forEach(function (r) { state.cats.forEach(function (c) { max = Math.max(max, r.cat[c.id] || 0); }); });
+    var colTot = {};
+    var t2 = '<table class="ptab"><thead><tr><th scope="col">Person</th>' + state.cats.map(function (c) {
+        return '<th scope="col"><span class="nm"><i class="cd" style="--c:' + colorOf(c.c) + '"></i>' + esc(c.name) + '</span></th>';
+      }).join('') + '<th scope="col">Summe</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td>' + nm(r) + '</td>' + state.cats.map(function (c) {
+          var y = r.cat[c.id] || 0; colTot[c.id] = (colTot[c.id] || 0) + y;
+          return y > 0 ? '<td class="heat" style="--h:' + Math.round(8 + (y / max) * 47) + '%">' + eur0.format(V(y)) + '</td>' : '<td class="zero">–</td>';
+        }).join('') + '<td><b>' + money(r.exp) + '</b></td></tr>';
+      }).join('') +
+      '<tr class="total"><td>Gesamt</td>' + state.cats.map(function (c) { return '<td>' + money(colTot[c.id] || 0) + '</td>'; }).join('') + '<td>' + money(totExp) + '</td></tr></tbody></table>';
+
+    return '<section class="card"><h2>Nach Person</h2>' +
+      '<p class="lede">Der Saldo einer Person sind ihre Einnahmen minus die ihr zugeordneten Ausgaben, ' + per + '. Posten ohne Zuordnung stehen unter „Gemeinsam“.</p>' +
+      '<div class="pbars"><div class="fv"><h3>Einnahmen ' + per + '</h3><div class="bar" role="img" aria-label="Einnahmen nach Person">' + bar('inc', totInc, 'Einnahmen') + '</div></div>' +
+      '<div class="fv"><h3>Ausgaben ' + per + '</h3><div class="bar" role="img" aria-label="Ausgaben nach Person">' + bar('exp', totExp, 'Ausgaben') + '</div></div></div>' +
+      '<div class="tablewrap">' + t1 + '</div></section>' +
+      '<section class="card"><h2>Ausgaben nach Person und Kategorie</h2>' +
+      '<p class="lede">Je kräftiger ein Feld, desto mehr gibt die Person in dieser Kategorie aus. Beträge ' + per + '.</p>' +
+      '<div class="tablewrap">' + t2 + '</div></section>';
+  }
+
+  function personSelect(x) {
+    if (!state.people.length) return '';
+    return '<select class="ps" id="ps-' + x.id + '" aria-label="Zuordnung zu einer Person"><option value="">Gemeinsam</option>' +
+      state.people.map(function (p) { return '<option value="' + p.id + '"' + ((x.p || '') === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select>';
+  }
+
+  function renderPeople() {
+    var rows = state.people.map(function (p) {
+      return '<div class="prow" data-pid="' + p.id + '">' +
+        '<input type="color" class="pcol" id="pc-' + p.id + '" value="' + p.c + '" aria-label="Farbe der Person">' +
+        '<input class="pname" id="pn-' + p.id + '" value="' + esc(p.name) + '" maxlength="40" aria-label="Name der Person">' +
+        '<button type="button" class="delp" aria-label="Person entfernen">×</button>' +
+        '<span class="pmeta" data-pmeta="' + p.id + '"></span></div>';
+    }).join('');
+    document.getElementById('pplPanel').innerHTML = '<div class="panel-h"><h2>Personen</h2></div>' +
+      (rows || '<p class="phint">Noch keine Personen. Lege Personen an, um Einnahmen und Ausgaben zuzuordnen und getrennt auszuwerten.</p>') +
+      '<button type="button" class="add" id="addPerson">+ Person hinzufügen</button>' +
+      (rows ? '<p class="phint">Wähle in den Zeilen bei Einnahmen und Ausgaben eine Person aus. Ohne Zuordnung zählt ein Posten als „Gemeinsam“.</p>' : '');
+  }
+
+  function rowHtml(x, isExp) {
+    var opts = INTV.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === x.i ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+    return '<div class="row" data-id="' + x.id + '">' +
+      '<input class="name" id="n-' + x.id + '" value="' + esc(x.name) + '" aria-label="Bezeichnung" maxlength="60">' +
+      '<output class="calc" data-calc="' + x.id + '"></output>' +
+      '<div class="ctl">' +
+      '<label class="amt"><input class="amt-in" id="a-' + x.id + '" inputmode="decimal" value="' + num2.format(x.amount) + '" aria-label="Betrag in Euro"><span>€</span></label>' +
+      '<select class="intv" id="i-' + x.id + '" aria-label="Rhythmus">' + opts + '</select>' + personSelect(x) +
+      (isExp ? '<button type="button" class="chip" aria-pressed="' + (x.fix ? 'true' : 'false') + '" title="Zwischen fix und variabel wechseln">' + (x.fix ? 'Fix' : 'Variabel') + '</button>' : '') +
+      '<button type="button" class="del" aria-label="Posten entfernen">×</button>' +
+      '</div></div>';
+  }
+
+  function catById(id) { return state.cats.filter(function (c) { return c.id === id; })[0]; }
+  function sortItems(items, mode) {
+    var coll = function (a, b) { return a.name.localeCompare(b.name, 'de', { sensitivity: 'base', numeric: true }); };
+    if (mode === 'az') return items.slice().sort(coll);
+    if (mode === 'za') return items.slice().sort(function (a, b) { return coll(b, a); });
+    if (mode === 'desc') return items.slice().sort(function (a, b) { return (yr(b) - yr(a)) || coll(a, b); });
+    if (mode === 'asc') return items.slice().sort(function (a, b) { return (yr(a) - yr(b)) || coll(a, b); });
+    return items;
+  }
+  function hexOf(c) {
+    if (typeof c !== 'number') return c;
+    var v = getComputedStyle(document.documentElement).getPropertyValue('--s' + c).trim();
+    return /^#[0-9a-f]{6}$/i.test(v) ? v : '#2a78d6';
+  }
+  function resort(gid) {
+    var cat = catById(gid), det = document.querySelector('details[data-g="' + gid + '"]');
+    if (!cat || !det) return;
+    var want = sortItems(state.items.filter(function (x) { return x.g === gid; }), cat.sort).map(function (x) { return x.id; });
+    var have = Array.prototype.map.call(det.querySelectorAll('.row'), function (r) { return r.dataset.id; });
+    if (want.join('|') === have.join('|')) return;
+    var add = det.querySelector('.add'), ae = document.activeElement, aid = ae && ae.id;
+    want.forEach(function (id) { var row = det.querySelector('.row[data-id="' + id + '"]'); if (row) det.insertBefore(row, add); });
+    if (aid && document.activeElement !== ae) { var el = document.getElementById(aid); if (el) el.focus(); }
+  }
+
+  function renderEditors() {
+    renderPeople();
+    var inc = '<div class="panel-h"><h2>Einnahmen</h2><b data-total="inc"></b></div><div class="inc-body">' +
+      state.income.map(function (x) { return rowHtml(x, false); }).join('') +
+      '<button type="button" class="add" data-add="inc">+ Einnahme hinzufügen</button></div>';
+    document.getElementById('incPanel').innerHTML = inc;
+
+    var sortOpts = function (cur, first) {
+      return (first ? '<option value="">' + first + '</option>' : '') + SORTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+    };
+    var exp = '<div class="panel-h"><h2>Ausgaben</h2><span><b data-total="exp"></b> <button type="button" class="link" id="toggleAll" style="margin-left:10px">' + (state.allOpen ? 'Alle zuklappen' : 'Alle Posten zeigen') + '</button></span></div>' +
+      '<div class="allsort"><label for="sortAll">Alle Kategorien sortieren</label><select id="sortAll">' + sortOpts('', 'Auswählen …') + '</select></div>' +
+      state.cats.map(function (g) {
+        var items = sortItems(state.items.filter(function (x) { return x.g === g.id; }), g.sort);
+        var open = state.allOpen || state.open[g.id];
+        return '<details data-g="' + g.id + '"' + (open ? ' open' : '') + '><summary><span class="mk" style="--c:' + colorOf(g.c) + '"></span><span class="gname">' + esc(g.name) + '</span><span class="gmeta"><b data-gtotal="' + g.id + '"></b><i data-gshare="' + g.id + '"></i></span></summary>' +
+          '<div class="cathead" data-cat="' + g.id + '">' +
+          '<label class="cf grow"><span>Name der Kategorie</span><input class="cname" id="cn-' + g.id + '" value="' + esc(g.name) + '" maxlength="40"></label>' +
+          '<label class="cf"><span>Farbe</span><input type="color" class="ccol" id="cc-' + g.id + '" value="' + hexOf(g.c) + '" aria-label="Farbe der Kategorie"></label>' +
+          '<label class="cf"><span>Sortierung</span><select class="csort" id="cs-' + g.id + '">' + sortOpts(g.sort || 'manual') + '</select></label>' +
+          '<button type="button" class="delcat"' + (state.cats.length < 2 ? ' disabled' : '') + '>Kategorie löschen</button>' +
+          '</div>' +
+          items.map(function (x) { return rowHtml(x, true); }).join('') +
+          '<button type="button" class="add" data-add="' + g.id + '">+ Posten zu ' + esc(g.name) + '</button></details>';
+      }).join('') +
+      '<button type="button" class="add addcat" id="addCat">+ Neue Kategorie</button>';
+    document.getElementById('expPanel').innerHTML = exp;
+  }
+
+  function updateTotals(d) {
+    d = d || calc();
+    var q = function (s) { return document.querySelector(s); };
+    var t1 = q('[data-total="inc"]'); if (t1) t1.textContent = eur0.format(V(d.inc));
+    var t2 = q('[data-total="exp"]'); if (t2) t2.textContent = eur0.format(V(d.exp));
+    d.byG.forEach(function (g) {
+      var a = q('[data-gtotal="' + g.id + '"]'); if (a) a.textContent = eur0.format(V(g.y));
+      var b = q('[data-gshare="' + g.id + '"]'); if (b) b.textContent = pc(g.y, d.inc);
+    });
+    var per = state.view === 'm' ? 'pro Monat' : 'pro Jahr';
+    calcPeople().forEach(function (r) {
+      var m = q('[data-pmeta="' + r.id + '"]');
+      if (m) m.textContent = 'Einnahmen ' + eur0.format(V(r.inc)) + ' · Ausgaben ' + eur0.format(V(r.exp)) + ' ' + per;
+    });
+    state.income.concat(state.items).forEach(function (x) {
+      var o = q('[data-calc="' + x.id + '"]'); if (o) o.textContent = eur2.format(V(yr(x)));
+    });
+  }
+
+  function refresh(noPersist) {
+    var d = calc();
+    renderOverview(state.who == null ? d : calc(state.who));
+    updateTotals(d);
+    var pn = document.getElementById('planName');
+    if (pn && document.activeElement !== pn) pn.value = state.name;
+    document.title = state.name || 'Familienbudget';
+    document.getElementById('v-m').setAttribute('aria-pressed', state.view === 'm');
+    document.getElementById('v-y').setAttribute('aria-pressed', state.view === 'y');
+    if (!noPersist) scheduleSave();
+    save();
+  }
+
+  function find(id) {
+    return state.income.concat(state.items).filter(function (x) { return x.id === id; })[0];
+  }
+  function rowOf(el) { var r = el.closest('.row'); return r ? find(r.dataset.id) : null; }
+
+  var editors = document.querySelector('.editors');
+  function catOf(el) { var h = el.closest('.cathead'); return h ? catById(h.dataset.cat) : null; }
+  function personOf(el) { var r = el.closest('.prow'); return r ? personById(r.dataset.pid) : null; }
+  editors.addEventListener('input', function (e) {
+    var t = e.target, pers = personOf(t);
+    if (pers) {
+      if (t.classList.contains('pname')) {
+        pers.name = t.value.slice(0, 40);
+        document.querySelectorAll('select.ps option[value="' + pers.id + '"]').forEach(function (o) { o.textContent = pers.name; });
+      } else if (t.classList.contains('pcol')) pers.c = t.value;
+      else return;
+      refresh();
+      return;
+    }
+    var cat = catOf(t);
+    if (cat) {
+      var det = t.closest('details');
+      if (t.classList.contains('cname')) {
+        cat.name = t.value.slice(0, 40);
+        det.querySelector('.gname').textContent = cat.name;
+        var ab = det.querySelector('.add'); if (ab) ab.textContent = '+ Posten zu ' + cat.name;
+      } else if (t.classList.contains('ccol')) {
+        cat.c = t.value;
+        det.querySelector('summary .mk').style.setProperty('--c', t.value);
+      } else return;
+      refresh();
+      return;
+    }
+    var x = rowOf(t); if (!x) return;
+    if (t.classList.contains('name')) x.name = t.value;
+    else if (t.classList.contains('amt-in')) x.amount = parseNum(t.value);
+    else return;
+    refresh();
+  });
+  editors.addEventListener('change', function (e) {
+    var t = e.target, cat = catOf(t);
+    if (cat) {
+      if (t.classList.contains('csort')) { cat.sort = t.value; resort(cat.id); refresh(); }
+      return;
+    }
+    if (t.id === 'sortAll') {
+      if (t.value) { state.cats.forEach(function (c) { c.sort = t.value; }); renderEditors(); refresh(); }
+      return;
+    }
+    var x = rowOf(t); if (!x) return;
+    if (t.classList.contains('ps')) { x.p = t.value; refresh(); return; }
+    if (t.classList.contains('amt-in')) t.value = num2.format(x.amount);
+    if (t.classList.contains('intv')) { x.i = t.value; refresh(); }
+    if (x.g && (t.classList.contains('amt-in') || t.classList.contains('intv') || t.classList.contains('name'))) resort(x.g);
+  });
+  editors.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.id === 'toggleAll') { state.allOpen = !state.allOpen; state.open = {}; renderEditors(); refresh(); return; }
+    if (t.id === 'addPerson') {
+      if (state.people.length >= 12) return;
+      var pn = 1, pid; do { pid = 'pe' + (state.people.length + pn++); } while (personById(pid));
+      state.people.push({ id: pid, name: 'Person ' + (state.people.length + 1), c: PERSON_COLORS[state.people.length % PERSON_COLORS.length] });
+      renderEditors(); refresh();
+      var pf = document.getElementById('pn-' + pid); if (pf) { pf.focus(); pf.select(); }
+      return;
+    }
+    if (t.classList.contains('delp')) {
+      var dp = personOf(t); if (!dp) return;
+      var cntp = state.items.concat(state.income).filter(function (x) { return x.p === dp.id; }).length;
+      if (cntp > 0 && t.dataset.armed !== '1') {
+        t.dataset.armed = '1'; t.classList.add('armed');
+        t.textContent = 'Entfernen? ' + cntp + (cntp === 1 ? ' Posten wird' : ' Posten werden') + ' „Gemeinsam“';
+        setTimeout(function () { if (t.isConnected) { t.dataset.armed = ''; t.classList.remove('armed'); t.textContent = '×'; } }, 5000);
+        return;
+      }
+      state.income.concat(state.items).forEach(function (x) { if (x.p === dp.id) x.p = ''; });
+      state.people = state.people.filter(function (p) { return p.id !== dp.id; });
+      if (state.who === dp.id) state.who = null;
+      renderEditors(); refresh(); return;
+    }
+    if (t.id === 'addCat') {
+      var n = 1, id; do { id = 'k' + (state.cats.length + n++); } while (catById(id));
+      var used = state.cats.map(function (c) { return String(c.c).toLowerCase(); });
+      var col = EXTRA_COLORS.filter(function (c) { return used.indexOf(c) < 0; })[0] || EXTRA_COLORS[state.cats.length % EXTRA_COLORS.length];
+      state.cats.push({ id: id, name: 'Neue Kategorie', c: col, sort: 'manual' });
+      state.open[id] = true;
+      renderEditors(); refresh();
+      var nf = document.getElementById('cn-' + id); if (nf) { nf.scrollIntoView({ block: 'center' }); nf.focus(); nf.select(); }
+      return;
+    }
+    if (t.classList.contains('delcat')) {
+      var dc = catOf(t); if (!dc || state.cats.length < 2) return;
+      var cnt = state.items.filter(function (x) { return x.g === dc.id; }).length;
+      if (cnt > 0 && t.dataset.armed !== '1') {
+        t.dataset.armed = '1'; t.classList.add('armed');
+        t.textContent = 'Wirklich löschen? ' + cnt + (cnt === 1 ? ' Posten wird' : ' Posten werden') + ' mitgelöscht';
+        setTimeout(function () { if (t.isConnected) { t.dataset.armed = ''; t.classList.remove('armed'); t.textContent = 'Kategorie löschen'; } }, 5000);
+        return;
+      }
+      state.items = state.items.filter(function (x) { return x.g !== dc.id; });
+      state.cats = state.cats.filter(function (c) { return c.id !== dc.id; });
+      delete state.open[dc.id];
+      renderEditors(); refresh(); return;
+    }
+    if (t.classList.contains('chip')) { var x = rowOf(t); if (x) { x.fix = !x.fix; renderEditors(); refresh(); } return; }
+    if (t.classList.contains('del')) {
+      var r = t.closest('.row'); if (!r) return;
+      state.items = state.items.filter(function (k) { return k.id !== r.dataset.id; });
+      state.income = state.income.filter(function (k) { return k.id !== r.dataset.id; });
+      renderEditors(); refresh(); return;
+    }
+    if (t.dataset && t.dataset.add) {
+      var g = t.dataset.add, id;
+      state.n = (state.n || 100) + 1;
+      if (g === 'inc') { id = 'e' + state.n; state.income.push({ id: id, name: 'Neue Einnahme', amount: 0, i: 'm', p: state.who || '' }); }
+      else { id = 'p' + state.n; state.items.push({ id: id, g: g, name: 'Neuer Posten', amount: 0, i: 'm', fix: false, p: state.who || '' }); state.open[g] = true; }
+      renderEditors(); refresh();
+      var f = document.getElementById('n-' + id); if (f) { f.focus(); f.select(); }
+    }
+  });
+  editors.addEventListener('toggle', function (e) {
+    if (e.target.tagName === 'DETAILS' && !state.allOpen) { state.open[e.target.dataset.g] = e.target.open; save(); }
+  }, true);
+
+  document.getElementById('v-m').addEventListener('click', function () { state.view = 'm'; refresh(); });
+  document.getElementById('v-y').addEventListener('click', function () { state.view = 'y'; refresh(); });
+
+  /* Tooltip */
+  var tip = document.getElementById('tip');
+  function showTip(el) {
+    var a; try { a = JSON.parse(el.getAttribute('data-tip')); } catch (e) { return; }
+    tip.innerHTML = '<b>' + esc(a[0]) + '</b><span>' + esc(a[1]) + '</span><em>' + esc(a[2]) + '</em>';
+    tip.hidden = false;
+  }
+  function placeTip(x, y) {
+    var r = tip.getBoundingClientRect();
+    var left = Math.min(Math.max(8, x + 14), window.innerWidth - r.width - 8);
+    var top = y - r.height - 14; if (top < 8) top = y + 18;
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  var tipT = null;
+  document.addEventListener('pointerover', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { showTip(el); placeTip(e.clientX, e.clientY); if (e.pointerType === 'touch') { clearTimeout(tipT); tipT = setTimeout(function () { tip.hidden = true; }, 2500); } } });
+  document.addEventListener('pointermove', function (e) { if (!tip.hidden) placeTip(e.clientX, e.clientY); });
+  document.addEventListener('pointerout', function (e) { if (e.pointerType !== 'touch' && e.target.closest && e.target.closest('[data-tip]')) tip.hidden = true; });
+  document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) { showTip(el); var b = el.getBoundingClientRect(); placeTip(b.left + b.width / 2, b.top); } });
+  document.addEventListener('focusout', function () { tip.hidden = true; });
+
+  /* ---------- Pläne und Daten-Dateien ---------- */
+  function inFrame() { try { return window.self !== window.top; } catch (e) { return true; } }
+  /* Automatisches Speichern in eine Datei gibt es nur in Chrome und Edge am Computer, direkt geöffnet (nicht eingebettet). */
+  var FS = typeof window.showOpenFilePicker === 'function' && typeof window.showSaveFilePicker === 'function' && !inFrame() && !window.claude;
+  var FILE_TYPES = [{ description: 'Budget-Daten (JSON)', accept: { 'application/json': ['.json'] } }];
+  var handle = null, curId = '', lastMod = 0, lastText = '', dirty = false, saveTimer = null, saving = false, again = false;
+  var fileName = '', savedAt = '', kind = 'none', msg = '', labelSaved = '', recents = [];
+  var $ = function (id) { return document.getElementById(id); };
+  var hhmm = function () { return new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); };
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  function idb(mode, fn) {
+    return new Promise(function (resolve, reject) {
+      var o = indexedDB.open('familienbudget', 1);
+      o.onupgradeneeded = function () { o.result.createObjectStore('kv'); };
+      o.onerror = function () { reject(o.error); };
+      o.onsuccess = function () {
+        var db = o.result;
+        try {
+          var tx = db.transaction('kv', mode);
+          var r = fn(tx.objectStore('kv'));
+          tx.oncomplete = function () { db.close(); resolve(r ? r.result : undefined); };
+          tx.onerror = function () { db.close(); reject(tx.error); };
+        } catch (e) { db.close(); reject(e); }
+      };
+    });
+  }
+  function getRecents() {
+    return idb('readonly', function (st) { return st.get('recents'); }).then(function (l) { return Array.isArray(l) ? l : []; }, function () { return []; });
+  }
+  function putRecents(list) { return idb('readwrite', function (st) { return st.put(list, 'recents'); }).catch(function () {}); }
+  function planLabel(e) { return e.label && e.label !== e.fileName ? e.label + ' (' + e.fileName + ')' : (e.fileName || 'Plan'); }
+  function drawRecents() {
+    var sel = $('dRecent');
+    sel.hidden = !(FS && recents.length);
+    sel.innerHTML = '<option value="">Zuletzt verwendete Pläne …</option>' + recents.map(function (e) {
+      return '<option value="' + esc(e.id) + '"' + (e.id === curId ? ' selected' : '') + '>' + esc(planLabel(e)) + '</option>';
+    }).join('');
+    if (!curId) sel.value = '';
+  }
+  async function rememberPlan(h) {
+    try {
+      var list = await getRecents(), found = null;
+      for (var i = 0; i < list.length && !found; i++) { try { if (await list[i].handle.isSameEntry(h)) found = list[i]; } catch (e) {} }
+      if (!found) { found = { id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }; list.push(found); }
+      found.handle = h; found.fileName = h.name; found.label = state.name; found.used = Date.now();
+      list.sort(function (a, b) { return b.used - a.used; });
+      recents = list.slice(0, 8);
+      curId = found.id; labelSaved = state.name;
+      try { sessionStorage.setItem('fb-plan', curId); } catch (e) {}
+      await putRecents(recents);
+    } catch (e) {}
+    drawRecents();
+  }
+  function updateLabel() {
+    labelSaved = state.name;
+    var r = recents.filter(function (e) { return e.id === curId; })[0];
+    if (r) { r.label = state.name; putRecents(recents); drawRecents(); }
+  }
+
+  function errText(e) {
+    if (e && e.name === 'NotAllowedError') return 'Der Zugriff auf die Datei wurde nicht erlaubt.';
+    if (e && e.name === 'NotFoundError') return 'Die Datei wurde nicht gefunden. Bitte wähle sie neu aus.';
+    if (e instanceof SyntaxError) return 'Die Datei ist keine gültige Daten-Datei (kein lesbares JSON).';
+    return (e && e.message) || 'Unbekannter Fehler.';
+  }
+
+  function payload() {
+    return JSON.stringify({
+      app: 'familienbudget', version: 4, savedAt: new Date().toISOString(),
+      data: { name: state.name, people: state.people, cats: state.cats, income: state.income, items: state.items, n: state.n, view: state.view }
+    }, null, 2);
+  }
+  function cleanId(x, fallback) { var s = String(x == null ? '' : x).replace(/[^\w-]/g, ''); return s || fallback; }
+  function applyData(obj) {
+    if (!obj || obj.app !== 'familienbudget' || !obj.data || !Array.isArray(obj.data.items) || !Array.isArray(obj.data.income)) {
+      throw new Error('Das ist keine Daten-Datei dieses Programms.');
+    }
+    var d = obj.data, k = 0, maxN = 100;
+    var sortIds = SORTS.map(function (s) { return s[0]; });
+    var cats = Array.isArray(d.cats) && d.cats.length ? d.cats.map(function (c, idx) {
+      var col = c && c.c;
+      if (typeof col === 'string' && /^#[0-9a-f]{6}$/i.test(col)) col = col.toLowerCase();
+      else if (typeof col === 'number' && col >= 1 && col <= 8) col = Math.round(col);
+      else col = EXTRA_COLORS[idx % EXTRA_COLORS.length];
+      return { id: cleanId(c && c.id, 'k' + (100 + idx)), name: String((c && c.name) || 'Kategorie').slice(0, 40), c: col, sort: sortIds.indexOf(c && c.sort) > -1 ? c.sort : 'manual' };
+    }) : defCats();
+    var people = (Array.isArray(d.people) ? d.people : []).slice(0, 12).map(function (p, idx) {
+      var col = p && p.c;
+      if (!(typeof col === 'string' && /^#[0-9a-f]{6}$/i.test(col))) col = PERSON_COLORS[idx % PERSON_COLORS.length];
+      return { id: cleanId(p && p.id, 'pe' + (100 + idx)), name: String((p && p.name) || 'Person').slice(0, 40), c: col.toLowerCase() };
+    });
+    var pids = people.map(function (p) { return p.id; });
+    var gids = cats.map(function (g) { return g.id; });
+    function bump(id) { var m = /(\d+)$/.exec(id); if (m) maxN = Math.max(maxN, parseInt(m[1], 10)); }
+    var income = d.income.map(function (x) {
+      var id = cleanId(x.id, 'e' + (1000 + ++k)); bump(id);
+      return { id: id, name: String(x.name || '').slice(0, 60), amount: Math.max(0, Number(x.amount) || 0), i: PER[x.i] ? x.i : 'm', p: pids.indexOf(x.p) > -1 ? x.p : '' };
+    });
+    var items = d.items.map(function (x) {
+      var id = cleanId(x.id, 'p' + (1000 + ++k)); bump(id);
+      return { id: id, g: gids.indexOf(x.g) > -1 ? x.g : gids[0], name: String(x.name || '').slice(0, 60), amount: Math.max(0, Number(x.amount) || 0), i: PER[x.i] ? x.i : 'm', fix: !!x.fix, p: pids.indexOf(x.p) > -1 ? x.p : '' };
+    });
+    state.name = String(d.name || DEFAULT_NAME).slice(0, 60);
+    state.people = people; state.cats = cats; state.income = income; state.items = items;
+    if (state.who && pids.indexOf(state.who) < 0) state.who = null;
+    state.n = Math.max(Number(d.n) || 0, maxN);
+    state.view = d.view === 'y' ? 'y' : 'm';
+    var keep = {}; cats.forEach(function (c) { if (state.open && state.open[c.id]) keep[c.id] = true; });
+    state.open = keep;
+  }
+  function zeroAll() {
+    state.income.forEach(function (x) { x.amount = 0; });
+    state.items.forEach(function (x) { x.amount = 0; });
+  }
+
+  function setStatus(k, m) { kind = k; msg = m || ''; drawBar(); }
+  function drawBar() {
+    var nm = fileName || (handle && handle.name) || '';
+    var t = msg, cls = 'dot';
+    if (!t) {
+      if (FS) {
+        if (kind === 'ok') t = 'Verbunden mit „' + nm + '“' + (savedAt ? ' · Stand ' + savedAt + ' Uhr' : '') + '. Änderungen werden automatisch gespeichert.';
+        else if (kind === 'saving') t = 'Speichert …';
+        else if (kind === 'need') t = 'Bitte den Zugriff auf „' + nm + '“ erlauben, um deine Daten zu laden.';
+        else if (kind === 'conflict') t = 'Die Datei „' + nm + '“ wurde inzwischen in einem anderen Fenster oder auf einem anderen Gerät geändert. Welche Version soll gelten?';
+        else if (recents.length) t = 'Dieses Fenster gehört noch zu keinem Plan. Wähle einen zuletzt verwendeten Plan oder öffne eine Daten-Datei.';
+        else t = 'Noch keine Daten-Datei gewählt. Deine Eingaben liegen vorerst nur als Zwischenspeicher in diesem Browser.';
+      } else if (cacheAt) {
+        var when = new Date(cacheAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        t = 'Wiederhergestellt aus dem Browser-Speicher' + (nm ? ': „' + nm + '“' : '') + ' · Stand ' + when + ' Uhr. ' +
+          (dirty ? 'Es gibt ungesicherte Änderungen, bitte „Als Datei sichern“. ' : '') +
+          'Hast du zuletzt auf einem anderen Gerät gearbeitet, öffne zuerst die Daten-Datei mit „Plan öffnen“.';
+      } else if (nm) {
+        t = 'Geöffnet: „' + nm + '“. ' + (dirty ? 'Es gibt ungesicherte Änderungen. Tippe auf „Als Datei sichern“ und ersetze die Datei in deinem Cloud-Ordner.' : 'Alles gesichert.');
+      } else {
+        t = 'Hier wird nicht automatisch in eine Datei gespeichert. Öffne zu Beginn deine Daten-Datei mit „Plan öffnen“ und sichere sie am Ende mit „Als Datei sichern“. Bis dahin merkt sich der Browser deine Eingaben nur als Zwischenspeicher. Am Computer speichern Chrome und Edge automatisch.';
+      }
+    }
+    if (!FS && cacheOk === false && !msg) t += ' Achtung: Dieser Browser erlaubt kein Zwischenspeichern, du musst die Datei bei jedem Start öffnen.';
+    if (kind === 'err') cls += ' err';
+    else if (kind === 'need' || kind === 'conflict' || (!FS && dirty)) cls += ' warn';
+    else if (FS ? (kind === 'ok' || kind === 'saving') : (nm && !dirty)) cls += ' ok';
+    $('dDot').className = cls;
+    $('dText').textContent = t;
+    $('dGrant').hidden = kind !== 'need';
+    $('dMine').hidden = kind !== 'conflict';
+    $('dTheirs').hidden = kind !== 'conflict';
+    $('dSave').hidden = !(FS && handle && kind !== 'need' && kind !== 'conflict');
+    $('dDl').hidden = FS;
+    $('mWin').hidden = !FS;
+    $('dirtyBadge').hidden = !(dirty && (!FS || !handle) && kind !== 'err');
+    $('dFile').hidden = FS;
+    $('dPaste').hidden = FS;
+    $('dDlMenu').hidden = !FS;
+    $('mNewEmpty').hidden = !FS;
+    $('mSaveAs').hidden = !FS;
+    ['mNewEmpty', 'mSaveAs', 'mReset', 'dDlMenu'].forEach(function (id) { $(id).disabled = kind === 'need'; });
+    $('dOpen').className = 'btn' + (handle || nm ? '' : ' primary');
+    document.body.classList.toggle('locked', kind === 'need');
+  }
+
+  async function loadFrom(h) {
+    var f = await h.getFile();
+    var txt = await f.text();
+    var had = false;
+    if (txt.trim()) { applyData(JSON.parse(txt)); had = true; }
+    lastMod = f.lastModified; lastText = txt;
+    return had;
+  }
+  async function reload() {
+    try {
+      var had = await loadFrom(handle);
+      if (had) { renderEditors(); refresh(true); }
+      dirty = false; savedAt = hhmm(); setStatus('ok');
+    } catch (e) { setStatus('err', errText(e)); }
+  }
+  async function writeNow(force) {
+    clearTimeout(saveTimer);
+    if (!handle) return;
+    if (saving) { again = true; return; }
+    var h = handle;
+    saving = true; setStatus('saving');
+    try {
+      if (force !== true) {
+        var f0 = await h.getFile();
+        if (f0.lastModified !== lastMod) {
+          var t0 = await f0.text();
+          if (t0 !== lastText) { if (h === handle) setStatus('conflict'); return; }
+          lastMod = f0.lastModified;
+        }
+      }
+      var out = payload();
+      var w = await h.createWritable();
+      await w.write(out);
+      await w.close();
+      var f = await h.getFile();
+      if (h !== handle) return;
+      lastMod = f.lastModified; lastText = out; dirty = false; savedAt = hhmm(); setStatus('ok');
+      if (state.name !== labelSaved) updateLabel();
+    } catch (e) {
+      if (h !== handle) return;
+      if (e && e.name === 'NotAllowedError') setStatus('need'); else setStatus('err', 'Speichern fehlgeschlagen: ' + errText(e));
+    } finally { saving = false; if (again) { again = false; writeNow(); } }
+  }
+  function scheduleSave() {
+    dirty = true;
+    if (kind === 'err' && !FS) { kind = 'ok'; msg = ''; }
+    if (FS && handle && kind !== 'need' && kind !== 'conflict') { clearTimeout(saveTimer); saveTimer = setTimeout(function () { writeNow(); }, 700); }
+    drawBar();
+  }
+  async function idle() { while (saving) await sleep(30); }
+  /* Offene Änderungen sichern, bevor dieses Fenster zu einer anderen Datei wechselt. */
+  async function flush() {
+    clearTimeout(saveTimer);
+    await idle();
+    if (handle && dirty && kind !== 'need' && kind !== 'conflict') { await writeNow(); await idle(); }
+    return !(handle && dirty);
+  }
+
+  async function switchTo(h) {
+    if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') {
+      setStatus('err', 'Ohne Schreibrecht kann nicht automatisch gespeichert werden. Bitte beim Öffnen das Speichern der Änderungen erlauben.');
+      return;
+    }
+    var had = await loadFrom(h);
+    clearTimeout(saveTimer);
+    handle = h; fileName = h.name; dirty = false;
+    renderEditors(); refresh(true);
+    await rememberPlan(h);
+    if (!had) { await writeNow(true); } else { savedAt = hhmm(); setStatus('ok'); }
+  }
+  async function openFile() {
+    if (!FS) { $('dFile').click(); return; }
+    try {
+      if (!(await flush())) return;
+      var hs = await window.showOpenFilePicker({ types: FILE_TYPES, multiple: false });
+      await switchTo(hs[0]);
+    } catch (e) { if (e && e.name === 'AbortError') return; setStatus('err', errText(e)); }
+  }
+  async function openRecent(id) {
+    var e = recents.filter(function (x) { return x.id === id; })[0];
+    if (!e || e.id === curId) { drawRecents(); return; }
+    try {
+      if (!(await flush())) { drawRecents(); return; }
+      await switchTo(e.handle);
+    } catch (er) {
+      if (er && er.name === 'NotFoundError') { recents = recents.filter(function (x) { return x.id !== id; }); putRecents(recents); }
+      drawRecents();
+      setStatus('err', errText(er));
+    }
+  }
+  /* Neue Datei: leer = gleiche Kategorien und Posten mit 0 €, sonst Kopie. Der bisherige Plan wird nicht angefasst. */
+  async function newPlanFile(empty) {
+    try {
+      if (!(await flush())) return;
+      var h = await window.showSaveFilePicker({ suggestedName: 'familienbudget-daten.json', types: FILE_TYPES });
+      clearTimeout(saveTimer);
+      var base = h.name.replace(/\.json$/i, '');
+      if (!/^familienbudget-daten(\s*\(\d+\))?$/i.test(base)) state.name = base.slice(0, 60);
+      else if (empty) state.name = 'Neuer Plan';
+      handle = h; fileName = h.name; lastMod = 0; lastText = ''; dirty = true;
+      if (empty) zeroAll();
+      renderEditors(); refresh(true);
+      await writeNow(true);
+      await rememberPlan(h);
+    } catch (e) { if (e && e.name === 'AbortError') return; setStatus('err', errText(e)); }
+  }
+  async function restore() {
+    try {
+      if (!FS) {
+        try {
+          var mt = JSON.parse(localStorage.getItem(META) || 'null');
+          if (mt && mt.at) { fileName = mt.fileName || ''; dirty = !!mt.dirty; cacheAt = mt.at; }
+        } catch (e) {}
+        return;
+      }
+      recents = await getRecents();
+      if (!recents.length) {
+        var old = await idb('readonly', function (st) { return st.get('handle'); }).catch(function () { return null; });
+        if (old) { recents = [{ id: 'f0', handle: old, fileName: old.name, label: '', used: Date.now() }]; await putRecents(recents); }
+      }
+      var sid = ''; try { sid = sessionStorage.getItem('fb-plan') || ''; } catch (e) {}
+      var entry = sid ? recents.filter(function (e) { return e.id === sid; })[0] : (location.hash === '#neu' ? null : recents[0]);
+      if (!entry) { drawRecents(); return; }
+      handle = entry.handle; fileName = entry.fileName || entry.handle.name; curId = entry.id; labelSaved = entry.label || '';
+      try { sessionStorage.setItem('fb-plan', curId); } catch (e) {}
+      drawRecents();
+      if ((await handle.queryPermission({ mode: 'readwrite' })) === 'granted') await reload(); else setStatus('need');
+    } catch (e) { setStatus('err', errText(e)); }
+    finally { booted = true; document.body.classList.remove('booting'); drawBar(); }
+  }
+
+  /* Alles auf Null, mit Rückfrage und Rückgängig */
+  var undoSnap = null, toastTimer = null;
+  function showToast(text) {
+    $('toastMsg').textContent = text; $('toast').hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 20000);
+  }
+  function hideToast() { $('toast').hidden = true; undoSnap = null; clearTimeout(toastTimer); }
+  function openReset() {
+    $('dlgResetP').textContent = 'Alle Einnahmen und Ausgaben im Plan „' + (state.name || DEFAULT_NAME) + '“ werden auf 0 € gesetzt. Kategorien, Posten, Rhythmen und Einstellungen bleiben erhalten.' +
+      (FS && handle ? ' Die Änderung wird sofort in der Datei „' + fileName + '“ gespeichert. Direkt danach kannst du sie noch rückgängig machen.' : '');
+    var dlg = $('dlgReset');
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else if (window.confirm('Alle Beträge auf 0 € setzen?')) doReset();
+  }
+  function doReset() {
+    undoSnap = { inc: state.income.map(function (x) { return [x.id, x.amount]; }), items: state.items.map(function (x) { return [x.id, x.amount]; }) };
+    zeroAll(); renderEditors(); refresh();
+    showToast('Alle Beträge wurden auf 0 € gesetzt.');
+  }
+  function undoReset() {
+    if (!undoSnap) return;
+    var m = {};
+    undoSnap.inc.concat(undoSnap.items).forEach(function (p) { m[p[0]] = p[1]; });
+    state.income.concat(state.items).forEach(function (x) { if (m[x.id] != null) x.amount = m[x.id]; });
+    hideToast(); renderEditors(); refresh();
+  }
+
+  function fileLabel() {
+    if (fileName) return fileName;
+    var slug = String(state.name || '').toLowerCase().replace(/[^a-z0-9äöüß]+/g, '-').replace(/^-+|-+$/g, '');
+    return (state.name === DEFAULT_NAME || !slug ? 'familienbudget-daten' : slug) + '.json';
+  }
+  function markSaved(name) {
+    if (FS) return;
+    dirty = false; cacheAt = 0; if (!fileName) fileName = name;
+    setStatus('ok'); save();
+  }
+  /* Reihenfolge: 1. Download-Funktion der Plattform (eingebettete Seite), 2. Teilen-Menü mit Datei (Handy: „In Dateien sichern“, Cloud-Ordner), 3. normaler Download */
+  async function downloadCopy() {
+    var text = payload(), name = fileLabel();
+    if (window.claude && typeof window.claude.use === 'function') {
+      try {
+        var dl = await window.claude.use('downloads');
+        if (dl) {
+          try { await dl.save({ filename: name, data: text }); markSaved(name); }
+          catch (e) { if (!e || e.code !== 'declined') setStatus('err', 'Sichern nicht möglich: ' + ((e && e.message) || 'unbekannter Fehler')); }
+          return;
+        }
+      } catch (e) {}
+    }
+    var blob = new Blob([text], { type: 'application/json' });
+    if (!FS && navigator.canShare && typeof File === 'function') {
+      try {
+        var file = new File([blob], name, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: state.name || DEFAULT_NAME });
+          markSaved(name);
+          return;
+        }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+    markSaved(name);
+  }
+
+  $('dOpen').addEventListener('click', openFile);
+  $('dRecent').addEventListener('change', function (e) { if (e.target.value) openRecent(e.target.value); else drawRecents(); });
+  $('dSave').addEventListener('click', function () { writeNow(); });
+  $('dMine').addEventListener('click', function () { writeNow(true); });
+  $('dTheirs').addEventListener('click', function () { reload(); });
+  $('dGrant').addEventListener('click', async function () {
+    try {
+      if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') { setStatus('need'); return; }
+      kind = 'ok';
+      if (dirty) await writeNow(); else await reload();
+    } catch (e) { setStatus('err', errText(e)); }
+  });
+  $('dFile').addEventListener('change', async function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      applyData(JSON.parse(await f.text()));
+      fileName = f.name; dirty = false; cacheAt = 0;
+      renderEditors(); refresh(true); setStatus('ok');
+    } catch (er) { setStatus('err', errText(er)); }
+  });
+  $('dPaste').addEventListener('click', function () { $('pasteMsg').textContent = ''; $('dlgPaste').showModal(); });
+  $('pasteClose').addEventListener('click', function () { $('dlgPaste').close(); });
+  $('pasteShow').addEventListener('click', async function () {
+    var ta = $('pasteTa'); ta.value = payload(); ta.focus(); ta.select();
+    var ok = false;
+    try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (e) { try { ok = document.execCommand('copy'); } catch (e2) {} }
+    $('pasteMsg').textContent = ok ? 'In die Zwischenablage kopiert. Jetzt in deine Datei einfügen und speichern.' : 'Text ist markiert: lange tippen, „Kopieren“ wählen und in deine Datei einfügen.';
+    if (ok) { dirty = false; cacheAt = 0; setStatus('ok'); save(); }
+  });
+  $('pasteLoad').addEventListener('click', function () {
+    try {
+      applyData(JSON.parse($('pasteTa').value));
+      dirty = false; cacheAt = 0; renderEditors(); refresh(true); setStatus('ok');
+      $('dlgPaste').close();
+    } catch (er) { $('pasteMsg').textContent = 'Das sind keine gültigen Daten: ' + errText(er); }
+  });
+  $('dDl').addEventListener('click', downloadCopy);
+  $('dirtyBadge').addEventListener('click', function () { if (FS && !handle) newPlanFile(false); else downloadCopy(); });
+  $('dDlMenu').addEventListener('click', downloadCopy);
+  $('mNewEmpty').addEventListener('click', function () { newPlanFile(true); });
+  $('mSaveAs').addEventListener('click', function () { newPlanFile(false); });
+  $('mWin').addEventListener('click', function () { window.open(location.href.split('#')[0] + '#neu', '_blank', 'noopener'); });
+  $('mReset').addEventListener('click', openReset);
+  $('resetNo').addEventListener('click', function () { $('dlgReset').close(); });
+  $('resetYes').addEventListener('click', function () { $('dlgReset').close(); doReset(); });
+  $('toastUndo').addEventListener('click', undoReset);
+  $('planName').addEventListener('input', function (e) { state.name = e.target.value.slice(0, 60); refresh(); });
+  $('planName').addEventListener('blur', function () { if (!state.name.trim()) { state.name = DEFAULT_NAME; refresh(); } });
+  $('more').addEventListener('click', function (e) { if (e.target.closest('.mi')) $('more').open = false; });
+  document.addEventListener('click', function (e) { if (!e.target.closest('#more')) $('more').open = false; });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') $('more').open = false; });
+
+  document.addEventListener('visibilitychange', async function () {
+    if (!FS) return;
+    if (document.visibilityState === 'hidden') { if (dirty && handle && kind !== 'need' && kind !== 'conflict') writeNow(); return; }
+    if (!handle || saving || dirty || kind === 'need' || kind === 'conflict') return;
+    try {
+      var f = await handle.getFile();
+      if (f.lastModified !== lastMod) {
+        var t = await f.text();
+        if (t !== lastText) await reload(); else lastMod = f.lastModified;
+      }
+    } catch (e) {}
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty && (!FS || !handle)) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  $('overview').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-who]'); if (!b) return;
+    var v = b.dataset.who;
+    state.who = v === 'all' ? null : (v === '_c' ? '' : v);
+    refresh(true);
+  });
+
+  renderEditors();
+  refresh(true);
+  drawBar();
+  setTimeout(function () { document.body.classList.remove('booting'); }, 4000);
+  /* Hell/Dunkel stufenlos: 0 = hell, 100 = dunkel. Zwischenwerte mischen die Farben; Textfarbe passt sich dem Hintergrund an. */
+  (function () {
+    var root = document.documentElement, KEYT = 'familienbudget-theme';
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    var L = { bg: '#f4f4f1', surface: '#fcfcfb', field: '#ffffff', grid: '#e1e0d9', axis: '#c3c2b7', accent: '#2a78d6', hero: '#184f95', pos: '#006300', neg: '#c23030', rest: '#e6efe0', 'rest-line': '#9db88f', fix: '#1c5cab', 'var': '#86b6ef',
+      s1: '#2a78d6', s2: '#eb6834', s3: '#1baf7a', s4: '#eda100', s5: '#e87ba4', s6: '#008300', s7: '#4a3aa7', s8: '#e34948' };
+    var D = { bg: '#0d0d0d', surface: '#1a1a19', field: '#232321', grid: '#2c2c2a', axis: '#383835', accent: '#3987e5', hero: '#1c5cab', pos: '#0ca30c', neg: '#e66767', rest: '#1f2a1c', 'rest-line': '#4e6a44', fix: '#5598e7', 'var': '#1c5cab',
+      s1: '#3987e5', s2: '#d95926', s3: '#199e70', s4: '#c98500', s5: '#d55181', s6: '#008300', s7: '#9085e9', s8: '#e66767' };
+    var INK = { light: { ink: '#0b0b0b', ink2: '#52514e', muted: '#6e6c66', border: 'rgba(11,11,11,.10)' }, dark: { ink: '#ffffff', ink2: '#c3c2b7', muted: '#a3a198', border: 'rgba(255,255,255,.10)' } };
+    var NAMES = Object.keys(L).concat(['ink', 'ink2', 'muted', 'border']);
+    var range = $('themeRange'), level = 0;
+    function rgb(h) { return [1, 3, 5].map(function (i) { return parseInt(h.substr(i, 2), 16); }); }
+    function mix(a, b, t) { var x = rgb(a), y = rgb(b); return '#' + x.map(function (v, i) { var c = Math.round(v + (y[i] - v) * t).toString(16); return c.length < 2 ? '0' + c : c; }).join(''); }
+    function lum(h) { var c = rgb(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+    function apply(n, save) {
+      level = Math.max(0, Math.min(100, Math.round(n)));
+      range.value = level;
+      var t = level / 100, st = root.style;
+      if (level === 0 || level === 100) {
+        NAMES.forEach(function (k) { st.removeProperty('--' + k); });
+        root.setAttribute('data-theme', level === 0 ? 'light' : 'dark');
+      } else {
+        var bg = mix(L.bg, D.bg, t), mode = lum(bg) > 0.18 ? 'light' : 'dark';
+        Object.keys(L).forEach(function (k) { st.setProperty('--' + k, mix(L[k], D[k], t)); });
+        Object.keys(INK[mode]).forEach(function (k) { st.setProperty('--' + k, INK[mode][k]); });
+        var ik = INK[mode].ink; st.setProperty('--ink2', mix(ik, bg, 0.1)); st.setProperty('--muted', mix(ik, bg, 0.22));
+        root.setAttribute('data-theme', mode);
+      }
+      if (save) { try { localStorage.setItem(KEYT, String(level)); } catch (e) {} }
+    }
+    var start = (mq && mq.matches) ? 100 : 0;
+    try {
+      var sv = localStorage.getItem(KEYT);
+      if (sv === 'dark') start = 100; else if (sv === 'light') start = 0; else if (sv !== null && !isNaN(+sv)) start = +sv;
+    } catch (e) {}
+    apply(start, false);
+    range.addEventListener('input', function () { apply(+range.value, true); });
+    $('themeBtn').addEventListener('click', function () { apply(level >= 50 ? 0 : 100, true); });
+  })();
+  restore();
+})();
+</script>
+
+<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(function () {});</script>
+</body>
+</html>
